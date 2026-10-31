@@ -1,43 +1,81 @@
 # Network Monitoring Tool
 
-A small Python utility for checking whether hosts and network services are reachable, measuring connection latency, and keeping a local record of monitoring results.
+A Python command-line utility for checking host availability, testing TCP ports, and measuring connection response time.
 
-The project is being built in stages, starting with a command-line monitor before adding persistent history and a lightweight dashboard.
+## Features
 
-## Planned features
+- Check host reachability by attempting HTTPS (port 443), then HTTP (port 80).
+- Check a specific TCP port.
+- Measure successful connection time in milliseconds.
+- Report connection failures and their error messages.
+- Configure the connection timeout.
+- Run automated unit tests with Python's standard library.
 
-- Check whether a host or website responds.
-- Measure connection time and report failures clearly.
-- Check selected TCP ports (for example, 22, 80, 443, and 3306).
-- Save check results with timestamps in SQLite.
-- Summarise availability and response-time history.
-- Provide a simple local dashboard once the monitoring core is stable.
+> Host checks use TCP connectivity, not ICMP ping. A host may be online while both tested ports are blocked.
 
-## Project status
+## Requirements
 
-**In development.** Features will be added and documented as they are implemented. The initial version focuses on reliable host and port checks.
+- Python 3.9 or later
+- No third-party packages required
 
-## Planned structure
+## Getting started
+
+Clone the repository:
+
+```bash
+git clone https://github.com/inshalashraf/network-monitoring-tool.git
+cd network-monitoring-tool
+```
+
+Check a host:
+
+```bash
+python -m monitor.cli example.com
+```
+
+Check a host and a specific TCP port:
+
+```bash
+python -m monitor.cli example.com --port 22
+```
+
+Set a custom timeout (in seconds):
+
+```bash
+python -m monitor.cli example.com --timeout 5
+```
+
+## Run tests
+
+From the repository root:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+## Project structure
 
 ```text
 network-monitoring-tool/
 ├── monitor/
 │   ├── __init__.py
 │   ├── checks.py
-│   └── ...
+│   └── cli.py
 ├── tests/
-├── README.md
-└── requirements.txt
+│   └── test_checks.py
+└── README.md
 ```
 
-## Getting started
+## Roadmap
 
-Setup and usage instructions will be added with the first working release.
+- [x] Basic host and TCP port checks
+- [x] Connection response-time measurement
+- [x] Command-line interface
+- [x] Unit tests for core checks
+- [ ] Save monitoring history in SQLite
+- [ ] Add uptime and latency summaries
+- [ ] Build a lightweight local dashboard
 
 ## Scope and safety
 
-This tool is intended for monitoring systems and networks you own or are authorised to test. It performs basic availability checks; it is not a vulnerability scanner or a substitute for a production monitoring platform.
-
-## License
-
-A license will be selected before the project is published as a reusable release.
+Use this tool only to monitor systems and networks you own or are authorised to test. It performs basic availability checks; it is not a vulnerability scanner or a substitute for a production monitoring platform.
