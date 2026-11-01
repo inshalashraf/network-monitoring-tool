@@ -6,7 +6,7 @@ A Python command-line utility for checking host availability, testing TCP ports,
 
 - Check host reachability by attempting HTTPS (port 443), then HTTP (port 80).
 - Check a specific TCP port.
-- Measure successful connection time in milliseconds.
+- Measure successful connection time in milliseconds.\n- Save each check to a local SQLite history database.\n- Show per-target uptime percentages and average successful latency.
 - Report connection failures and their error messages.
 - Configure the connection timeout.
 - Run automated unit tests with Python's standard library.
