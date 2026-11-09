@@ -53,3 +53,28 @@ def get_summaries(database="network_history.db"):
         }
         for row in rows
     ]
+
+
+def get_recent_checks(database="network_history.db", limit=50):
+    """Return the newest check records, with a safe upper bound on the result size."""
+    if not isinstance(limit, int) or isinstance(limit, bool) or limit < 1:
+        raise ValueError("limit must be a positive integer")
+    target = Path(database)
+    if not target.exists():
+        return []
+    with _connect(target) as connection:
+        rows = connection.execute(
+            """SELECT target, is_available, response_time_ms, error, checked_at
+               FROM checks ORDER BY id DESC LIMIT ?""",
+            (min(limit, 500),),
+        ).fetchall()
+    return [
+        {
+            "target": row[0],
+            "is_available": bool(row[1]),
+            "response_time_ms": row[2],
+            "error": row[3],
+            "checked_at": row[4],
+        }
+        for row in rows
+    ]
