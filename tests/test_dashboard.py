@@ -23,6 +23,28 @@ class DashboardTests(unittest.TestCase):
             self.assertIn("connection refused", page)
             self.assertIn("DOWN", page)
 
+    def test_dashboard_filters_recent_checks_by_target_and_status(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database = Path(directory) / "history.db"
+            record_result(CheckResult("server-a", True, 12.5), database)
+            record_result(CheckResult("server-b", False, None, "connection refused"), database)
+
+            page = render_dashboard(database, target_filter="server-b", status_filter="down")
+
+            self.assertIn("server-b", page)
+            self.assertIn("DOWN", page)
+            self.assertNotIn("<td>server-a</td>", page)
+            self.assertIn("100.00%", page)  # Summary remains global, not filter-dependent.
+
+    def test_dashboard_returns_empty_state_for_non_matching_filter(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database = Path(directory) / "history.db"
+            record_result(CheckResult("server-a", True, 12.5), database)
+
+            page = render_dashboard(database, target_filter="missing-host")
+
+            self.assertIn("No checks match these filters.", page)
+
     def test_dashboard_handles_empty_database(self):
         with tempfile.TemporaryDirectory() as directory:
             page = render_dashboard(Path(directory) / "missing.db")
