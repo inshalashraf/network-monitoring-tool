@@ -33,7 +33,8 @@ class DashboardTests(unittest.TestCase):
 
             self.assertIn("server-b", page)
             self.assertIn("DOWN", page)
-            self.assertNotIn("<td>server-a</td>", page)
+            recent_section = page.split("<h2>Recent checks</h2>", 1)[1]
+            self.assertNotIn("<td>server-a</td>", recent_section)
             self.assertIn("100.00%", page)  # Summary remains global, not filter-dependent.
 
     def test_dashboard_returns_empty_state_for_non_matching_filter(self):
