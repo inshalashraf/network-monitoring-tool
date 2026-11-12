@@ -7,10 +7,19 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from .history import get_recent_checks, get_summaries
 
 
-def render_dashboard(database):
-    """Build a refreshable HTML dashboard from the local SQLite history."""
+def render_dashboard(database, target_filter="", status_filter="all"):
+    """Build a refreshable HTML dashboard, optionally filtering recent checks."""
     summaries = get_summaries(database)
     recent = get_recent_checks(database, 50)
+    target_filter = target_filter.strip()
+    if target_filter:
+        recent = [item for item in recent if item["target"] == target_filter]
+    if status_filter == "up":
+        recent = [item for item in recent if item["is_available"]]
+    elif status_filter == "down":
+        recent = [item for item in recent if not item["is_available"]]
+    else:
+        status_filter = "all"
     total_checks = sum(item["checks"] for item in summaries)
     total_available = sum(item["available"] for item in summaries)
     overall_uptime = (total_available / total_checks * 100) if total_checks else 0
@@ -46,7 +55,18 @@ def render_dashboard(database):
         )
 
     summary_body = "".join(summary_rows) or "<tr><td colspan='4'>No checks recorded yet.</td></tr>"
-    recent_body = "".join(recent_rows) or "<tr><td colspan='5'>No recent checks.</td></tr>"
+    recent_body = "".join(recent_rows) or "<tr><td colspan='5'>No checks match these filters.</td></tr>"
+    target_options = ["<option value=''>All targets</option>"]
+    for item in summaries:
+        selected = " selected" if item["target"] == target_filter else ""
+        target_options.append(
+            f"<option value='{escape(item['target'], quote=True)}'{selected}>"
+            f"{escape(item['target'])}</option>"
+        )
+    status_options = []
+    for value, label in (("all", "All statuses"), ("up", "UP only"), ("down", "DOWN only")):
+        selected = " selected" if status_filter == value else ""
+        status_options.append(f"<option value='{value}'{selected}>{label}</option>")
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -67,6 +87,10 @@ th,td {{ padding: 11px 10px; border-bottom: 1px solid #edf0f2; vertical-align: t
 th {{ color: #536170; font-size: 13px; }} .status {{ font-weight: 700; }}
 .up {{ color: #16834a; }} .down {{ color: #c0392b; }}
 footer {{ margin: 20px 0; font-size: 13px; color: #65717d; }}
+.filters {{ display: flex; align-items: end; flex-wrap: wrap; gap: 12px; margin: 12px 0 18px; }}
+.filters label {{ display: grid; gap: 5px; color: #536170; font-size: 13px; }}
+.filters select, .filters button {{ padding: 8px 10px; border: 1px solid #ccd4dc; border-radius: 6px; background: white; }}
+.filters a {{ padding: 8px 0; color: #245b91; }}
 </style>
 </head>
 <body>
@@ -79,7 +103,14 @@ footer {{ margin: 20px 0; font-size: 13px; color: #65717d; }}
 </div>
 <section><h2>Target summary</h2><table><thead><tr><th>Target</th><th>Uptime</th><th>Successful checks</th><th>Avg. latency</th></tr></thead>
 <tbody>{summary_body}</tbody></table></section>
-<section><h2>Recent checks</h2><table><thead><tr><th>Checked at (UTC)</th><th>Target</th><th>Status</th><th>Latency</th><th>Error</th></tr></thead>
+<section><h2>Recent checks</h2>
+<form method="get" action="/" class="filters">
+<label>Target <select name="target">{''.join(target_options)}</select></label>
+<label>Status <select name="status">{''.join(status_options)}</select></label>
+<button type="submit">Apply filters</button>
+<a href="/">Clear</a>
+</form>
+<table><thead><tr><th>Checked at (UTC)</th><th>Target</th><th>Status</th><th>Latency</th><th>Error</th></tr></thead>
 <tbody>{recent_body}</tbody></table></section>
 <footer>Dashboard reads the local SQLite history only. It does not start checks by itself. Keep this server bound to localhost unless you intentionally configure network access.</footer>
 </body></html>"""
@@ -96,10 +127,18 @@ def main():
 
     class DashboardHandler(BaseHTTPRequestHandler):
         def do_GET(self):
-            if self.path not in ("/", "/index.html"):
+            from urllib.parse import parse_qs, urlparse
+
+            parsed = urlparse(self.path)
+            if parsed.path not in ("/", "/index.html"):
                 self.send_error(404, "Page not found")
                 return
-            page = render_dashboard(args.database).encode("utf-8")
+            query = parse_qs(parsed.query)
+            target_filter = query.get("target", [""])[0]
+            status_filter = query.get("status", ["all"])[0]
+            if status_filter not in ("all", "up", "down"):
+                status_filter = "all"
+            page = render_dashboard(args.database, target_filter, status_filter).encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(page)))
